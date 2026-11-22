@@ -1,0 +1,37 @@
+[project]
+name = "sleep-analyze"
+version = "0.1.0"
+description = "PyTorch pipeline that classifies bedroom CCTV footage into sleep states using CNN ensembles."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "boto3>=1.36.0",
+    "marimo>=0.23.1",
+    "matplotlib>=3.10.8",
+    "numpy>=2.2.0",
+    "optuna>=4.0",
+    "pillow>=11.0.0",
+    "ruff>=0.15.20",
+    "tensorboard>=2.19.0",
+    "timm>=1.0.15",
+    "torch>=2.7.0",
+    "torchvision>=0.22.0",
+]
+
+[tool.marimo.runtime]
+output_max_bytes = 10_000_000
+# Windows は cu130 (CUDA 13.0) を使う。Linux/Colab はデフォルト PyPI の torch
+# (cu12x) を使う: cu130 同梱の cuDNN が channels_last + bf16 の depthwise 畳み込みで
+# "FIND was unable to find an engine" を出すため。
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu130", marker = "sys_platform == 'win32'" },
+]
+torchvision = [
+    { index = "pytorch-cu130", marker = "sys_platform == 'win32'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true

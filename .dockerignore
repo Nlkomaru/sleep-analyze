@@ -1,0 +1,12 @@
+# ビルドコンテキストは src/ と sleep_classifier/sleep_classifier_ensemble.pt
+# だけで十分。大きな学習データ・出力・アーカイブ・他の .pt は送らない。
+*
+
+# 推論コード一式
+!src
+
+# モデルは sleep_classifier 配下の 1 ファイルだけ再包含する
+# (ディレクトリを一旦戻し、中身を除外してから対象ファイルだけ許可)
+!sleep_classifier
+sleep_classifier/*
+!sleep_classifier/sleep_classifier_ensemble.pt

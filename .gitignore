@@ -1,0 +1,45 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+
+output/
+test/
+output-label/
+
+__marimo__/
+
+models/
+dataset/
+
+output-label/result/
+labeled/
+test/unlabeled/
+
+sweeps/
+
+all.tar.gz
+sweeps-*.tar.gz
+sweeps-*.zip
+models.zip
+
+.cache/
+
+sleep_classifier/
+sleep_classifier_*/
+sleep_classifier.tar.gz
+
+*.tar.gz
+# train/ のローカル生成物（画像 pool・キャッシュ・run 成果物）
+train/build/
+# 秘密情報を含むため追跡しない（.env.example のみ追跡する）
+train/.env
+train/.env.*
+!train/.env.example

@@ -41,7 +41,7 @@ BASELINE_CACHE_PATH = BUILD_DIR / "baseline_production.json"
 LABELED_DIR = REPO_ROOT / "labeled"
 
 # --------------------------------------------------------------------------- #
-# Environment / secrets (os.environ / Colab Secrets first, then train/.env)
+# Environment / secrets (train/.env first, then os.environ / Colab Secrets)
 # --------------------------------------------------------------------------- #
 
 _DOTENV_CACHE: dict[str, str] | None = None
@@ -50,8 +50,10 @@ _DOTENV_CACHE: dict[str, str] | None = None
 def load_env(*, reload: bool = False) -> dict[str, str]:
     """Parse ``train/.env`` into a dict (cached).
 
-    Environment variables (including Google Colab Secrets exported to
-    ``os.environ``) always take precedence over ``train/.env`` in :func:`get_env`.
+    ``train/.env`` takes precedence over ambient ``os.environ`` in :func:`get_env`
+    so project credentials are not shadowed by unrelated shell exports. On Google
+    Colab, ``train/.env`` is absent and Colab Secrets exported to ``os.environ``
+    are used automatically.
     """
     global _DOTENV_CACHE
     if _DOTENV_CACHE is not None and not reload:
@@ -74,13 +76,13 @@ def load_env(*, reload: bool = False) -> dict[str, str]:
 
 
 def get_env(name: str, default: str = "") -> str:
-    """Read ``name`` from ``os.environ`` first, then ``train/.env``."""
-    env_val = os.environ.get(name, "").strip()
-    if env_val:
-        return env_val
+    """Read ``name`` from ``train/.env`` first, then ``os.environ``."""
     dotenv_val = load_env().get(name, "").strip()
     if dotenv_val:
         return dotenv_val
+    env_val = os.environ.get(name, "").strip()
+    if env_val:
+        return env_val
     return default
 
 

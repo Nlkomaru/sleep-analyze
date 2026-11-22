@@ -11,8 +11,8 @@ Two facts drive the design:
   when a human touches a frame, so ``corrected_label != label`` holds for all of
   them. That makes this set hard examples, not a random sample.
 
-Credentials and environment settings are read from ``os.environ`` first, then
-``train/.env``.
+Credentials and environment settings are read from ``train/.env`` first, then
+``os.environ``.
 """
 
 from __future__ import annotations

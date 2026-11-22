@@ -46,8 +46,8 @@ cp train/.env.example train/.env
 
 - `R2_TRAIN_PREFIX`: バケット内のプレフィックス（既定: `train`）
 - `DISCORD_WEBHOOK_URL`: 進捗・完了通知を送る Discord Webhook URL
-- `D1_DATABASE`: 修正ラベルを取得する D1 データベース名（`fetch_corrections.py` で必須）
-- `HEALTH_REPO`: D1 クエリ実行元のリポジトリパス（`fetch_corrections.py` で必須）
+- `D1_DATABASE_ID`: 修正ラベルを取得する D1 データベースの UUID（`fetch_corrections.py` で必須、`pnpx cf d1 query` を使用）
+- `CLOUDFLARE_ACCOUNT_ID`: Cloudflare アカウント ID（`R2_ENDPOINT_URL` から自動抽出できる場合は省略可）
 - `PRODUCTION_MODEL_PATH`: 比較採点に使う現本番モデルのパス（既定: `~/data/models/sleep_classifier_ensemble.pt`）
 
 設定後、R2 疎通と Discord 通知を確認します。

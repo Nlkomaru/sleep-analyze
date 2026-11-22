@@ -20,6 +20,8 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import json
+import os
+import re
 import subprocess
 import sys
 from collections import Counter
@@ -41,10 +43,26 @@ class Frame:
     label: str  # the human-corrected label
 
 
-def _run(cmd: list[str], *, cwd: Path | None = None) -> str:
+def _cloudflare_account_id() -> str:
+    account_id = config.get_env("CLOUDFLARE_ACCOUNT_ID")
+    if account_id:
+        return account_id
+    endpoint = config.get_env("R2_ENDPOINT_URL")
+    match = re.search(r"https?://([0-9a-f]+)\.r2\.cloudflarestorage\.com", endpoint)
+    if match:
+        return match.group(1)
+    raise SystemExit(
+        "CLOUDFLARE_ACCOUNT_ID is not set and could not be derived from "
+        "R2_ENDPOINT_URL. Set CLOUDFLARE_ACCOUNT_ID or R2_ENDPOINT_URL in "
+        "os.environ or train/.env."
+    )
+
+
+def _run(cmd: list[str], *, env: dict[str, str] | None = None) -> str:
     proc = subprocess.run(
         cmd,
-        cwd=None if cwd is None else str(cwd),
+        env=env,
+        stdin=subprocess.DEVNULL,
         capture_output=True,
         text=True,
     )
@@ -55,27 +73,26 @@ def _run(cmd: list[str], *, cwd: Path | None = None) -> str:
     return proc.stdout
 
 
-def d1_query(sql: str, *, d1_database: str, health_repo: Path) -> list[dict]:
+def d1_query(sql: str, *, d1_database_id: str) -> list[dict]:
     """Run one read-only SQL statement against the remote D1 database."""
+    env = dict(os.environ, CLOUDFLARE_ACCOUNT_ID=_cloudflare_account_id())
     raw = _run(
         [
-            "pnpm",
-            "exec",
-            "wrangler",
+            "pnpx",
+            "--allow-build=workerd",
+            "cf",
             "d1",
-            "execute",
-            d1_database,
-            "--remote",
-            "--json",
-            "--command",
+            "query",
+            d1_database_id,
+            "--sql",
             sql,
+            "-q",
         ],
-        cwd=health_repo,
+        env=env,
     )
-    # wrangler prefixes progress lines before the JSON payload.
     start = raw.find("[")
     if start < 0:
-        raise SystemExit(f"unexpected wrangler output:\n{raw[:2000]}")
+        raise SystemExit(f"unexpected cf d1 query output:\n{raw[:2000]}")
     payload = json.loads(raw[start:])
     results: list[dict] = []
     for block in payload:
@@ -85,7 +102,7 @@ def d1_query(sql: str, *, d1_database: str, health_repo: Path) -> list[dict]:
     return results
 
 
-def fetch_corrected_rows(*, d1_database: str, health_repo: Path) -> list[Frame]:
+def fetch_corrected_rows(*, d1_database_id: str) -> list[Frame]:
     """All reviewed frames whose label a human actually changed.
 
     Filters on ``corrected_label != label`` rather than ``in_dataset``: the review UI
@@ -98,8 +115,7 @@ def fetch_corrected_rows(*, d1_database: str, health_repo: Path) -> list[Frame]:
         "where in_dataset = 1 and corrected_label is not null "
         "and corrected_label != label and image_key is not null "
         "order by date, timestamp",
-        d1_database=d1_database,
-        health_repo=health_repo,
+        d1_database_id=d1_database_id,
     )
     frames = []
     for row in rows:
@@ -196,11 +212,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    d1_database = config.require_env("D1_DATABASE")
-    health_repo = Path(config.require_env("HEALTH_REPO"))
+    d1_database_id = config.require_env("D1_DATABASE_ID")
 
     print("[fetch] querying D1 for corrected frames...", flush=True)
-    frames = fetch_corrected_rows(d1_database=d1_database, health_repo=health_repo)
+    frames = fetch_corrected_rows(d1_database_id=d1_database_id)
     print(f"[fetch] D1 rows with a real correction: {len(frames)}", flush=True)
 
     store = r2_store.R2Store()
@@ -235,7 +250,7 @@ def main(argv: list[str] | None = None) -> int:
 
     manifest = {
         "source": {
-            "d1_database": d1_database,
+            "d1_database_id": d1_database_id,
             "r2_bucket": store.bucket,
             "filter": "in_dataset=1 AND corrected_label IS NOT NULL AND corrected_label != label",
         },
